@@ -77,7 +77,7 @@ const StudentManagementPage = () => {
   return (
     <div className='flex'>
       <div>
-        <Sidebar action={"staffPage"}/>
+        <Sidebar action={"studentManagement"}/>
       </div>
       <div className='library-content pl-20 pt-5 w-full'>
         <div className="flex items-center justify-between mb-4">

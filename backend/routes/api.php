@@ -14,6 +14,7 @@ Route::get('/test', function() {
 Route::get('borrowed-books/staff/{staffId}', [BookBorrowedController::class, 'getBorrowedBooksByStaff']);
 Route::get('books/staff-books/{staffId}', [BookController::class, 'getBooksByStaff']);
 Route::get('users/borrowers', [UserController::class, 'getBorrowerUsers']);
+Route::post('users/{id}', [UserController::class, 'update']);
 Route::get('users/staff', [UserController::class, 'getStaffUsers']);
 Route::get('borrowed-books/user/{userId}', [BookBorrowedController::class, 'userBorrowedBooks']);
 Route::apiResource('users', UserController::class);

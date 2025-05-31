@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import Sidebar from '../../../components/Sidebar'
-import { staffSidebarTabs } from '../../../components/Sidebar/SideBarItems'
+import { BorrowerSidebarTabs } from '../../../components/Sidebar/SideBarItems'
 import BookCard from '../../../components/ModalForm/BookCard'
 import { getData, updateData } from '../../../services/ApiServices'
 
@@ -63,7 +63,7 @@ const BorrowList = () => {
 
   return (
     <div className='dashboard-container'>
-      <Sidebar action="bookManagement" tabs={staffSidebarTabs} />
+      <Sidebar action="borrowedBooks" tabs={BorrowerSidebarTabs} />
 
       <div className="pl-20 pt-5 w-full">
         <h1 className='text-4xl font-bold mb-4'>Borrowed Books List</h1>

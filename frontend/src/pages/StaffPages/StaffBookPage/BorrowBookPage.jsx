@@ -108,13 +108,8 @@ const BorrowBookPage = () => {
         <Sidebar action={"borrowManagement"} tabs={staffSidebarTabs}/>
       </div>
       <div className="pl-20 pt-5 w-full">
-        <h1 className='text-4xl font-bold mb-4'>Book Management</h1>
-        <Card
-          buttonName={"Add Book"}
-          fields={modalFields}
-          onSubmit={handleAddBook}
-        />
-        <p className='text-lg mb-4'>Here you can manage your books.</p>
+        <h1 className='text-4xl font-bold mb-4'>Borrow Book Management</h1>
+        <p className='text-lg mb-4'>Here you see the books borrowed.</p>
         {loading ? (
           <div className="text-gray-500">Loading...</div>
         ) : (

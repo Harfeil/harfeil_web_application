@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../../../components/Sidebar';
-import { staffSidebarTabs } from '../../../components/Sidebar/SideBarItems';
+import { BorrowerSidebarTabs, staffSidebarTabs } from '../../../components/Sidebar/SideBarItems';
 import BookCard from '../../../components/ModalForm/BookCard';
 import { getData, createData } from '../../../services/ApiServices';
 import { AddBookFields } from '../../../components/ModalForm/ModalFormFields';
@@ -85,7 +85,7 @@ const StudentBookPage = () => {
 
   return (
     <div className="dashboard-container">
-      <Sidebar action="bookManagement" tabs={staffSidebarTabs} />
+      <Sidebar action="bookList" tabs={BorrowerSidebarTabs} />
       <div className="pl-20 pt-5 w-full">
         <h1 className="text-4xl font-bold mb-4">Book Lists</h1>
         <p className="text-lg mb-4">Here you can borrow books.</p>
