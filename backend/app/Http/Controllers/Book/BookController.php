@@ -11,11 +11,26 @@ class BookController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+   public function index()
     {
-        // Return all books as JSON
-        $books = Book::all();
-        return response()->json($books);
+        // Eager load library relationship for all books
+        $books = Book::with('library')->get();
+
+        // Map the books to include library name explicitly
+        $booksWithLibraryName = $books->map(function ($book) {
+            return [
+                'id' => $book->id,
+                'title' => $book->title,
+                'author' => $book->author,
+                'isbn' => $book->isbn,
+                'year_published' => $book->year_published,
+                'category' => $book->category,
+                'library_name' => $book->library?->library_name,
+                'status' => $book->status? $book->status : 'available', // Default to 'available' if status is null
+            ];
+        });
+
+        return response()->json($booksWithLibraryName);
     }
 
     /**
@@ -42,12 +57,14 @@ class BookController extends Controller
                 'genre' => 'nullable|string',
                 'category' => 'nullable|string',
                 'library_id' => 'required|exists:libraries,id',
+                'status' => 'required|string',
             ], [
                 'title.required' => 'The title field is required.',
                 'author.required' => 'The author field is required.',
                 'year_published.required' => 'The published year is required.',
                 'library_id.required' => 'The library_id field is required.',
                 'library_id.exists' => 'The selected library does not exist.',
+                'status.required' => 'The status field is required.',
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['errors' => $e->errors()], 422);
@@ -83,7 +100,16 @@ class BookController extends Controller
         if (!$book) {
             return response()->json(['message' => 'Book not found'], 404);
         }
-        return response()->json($book);
+        return response()->json([
+        'id' => $book->id,
+        'title' => $book->title,
+        'author' => $book->author,
+        'isbn' => $book->isbn,
+        'year_published' => $book->year_published,
+        'category' => $book->category,
+        'library_name' => $book->library?->library_name, // assuming the Library model has a 'name' column
+        'status' => $book->status? $book->status : 'available', // Default to 'available' if status is null
+    ]);
     }
 
     /**
@@ -139,6 +165,9 @@ class BookController extends Controller
         if ($request->has('category')) {
             $book->category = $request->category;
         }
+        if ($request->has('status')) {
+            $book->status = $request->status;
+        }
 
         $book->save();
 
@@ -158,5 +187,33 @@ class BookController extends Controller
         $book->delete();
 
         return response()->json(['message' => 'Book deleted successfully']);
+    }
+
+    public function getBooksByStaff($staffId)
+    {
+        // Get all books associated with the staff member
+        $books = Book::whereHas('library.staff', function ($query) use ($staffId) {
+            $query->where('id', $staffId);
+        })->get();
+
+        if ($books->isEmpty()) {
+            return response()->json(['message' => 'No books found for this staff member'], 404);
+        }
+
+        // Map the books to include library name explicitly
+        $booksWithLibraryName = $books->map(function ($book) {
+            return [
+                'id' => $book->id,
+                'title' => $book->title,
+                'author' => $book->author,
+                'isbn' => $book->isbn,
+                'year_published' => $book->year_published,
+                'category' => $book->category,
+                'library_name' => $book->library?->library_name,
+                'status' => $book->status,
+            ];
+        });
+
+        return response()->json($booksWithLibraryName);
     }
 }

@@ -6,103 +6,208 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Book\BorrowedBook;
 use App\Models\Book\Book;
-use App\Models\User\User;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
 
 class BookBorrowedController extends Controller
 {
-    // List all borrowed books
     public function index()
     {
-        $borrowed = BorrowedBook::all();
-        return response()->json($borrowed);
+        $borrowedBooks = BorrowedBook::with('book.library')->get();
+
+        $result = $borrowedBooks->map(fn($borrow) => $this->formatBorrowedBook($borrow));
+
+        return response()->json($result);
     }
 
-    // Store a new borrowed book record
     public function store(Request $request)
     {
-        // Accept both string and timestamp for dates, and provide clear validation messages
         $validator = Validator::make($request->all(), [
-            'book_id' => ['required', 'integer', 'exists:books,id'],
-            'user_id' => ['required', 'integer', 'exists:users,id'],
-            'borrowed_at' => ['required', 'date'],
-            'due_at' => ['required', 'date', 'after:borrowed_at'],
-            'returned_at' => ['nullable', 'date', 'after:borrowed_at'],
-        ], [
-            'book_id.required' => 'The book_id field is required.',
-            'book_id.exists' => 'The selected book does not exist.',
-            'user_id.required' => 'The user_id field is required.',
-            'user_id.exists' => 'The selected user does not exist.',
-            'borrowed_at.required' => 'The borrowed_at field is required.',
-            'borrowed_at.date' => 'The borrowed_at must be a valid date.',
-            'due_at.required' => 'The due_at field is required.',
-            'due_at.date' => 'The due_at must be a valid date.',
-            'due_at.after' => 'The due_at must be after borrowed_at.',
-            'returned_at.date' => 'The returned_at must be a valid date.',
-            'returned_at.after' => 'The returned_at must be after borrowed_at.',
+            'book_id' => 'required|integer|exists:books,id',
+            'user_id' => 'required|integer|exists:users,id',
+            'status' => 'Borrowed',
+            'borrowed_at' => 'required|date',
+            'due_at' => 'required|date|after:borrowed_at',
+            'returned_at' => 'nullable|date|after:borrowed_at',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $borrowed = BorrowedBook::create($validator->validated());
-        return response()->json($borrowed, 201);
+        DB::beginTransaction();
+
+        try {
+            $data = $validator->validated();
+            $data['status'] = 'borrowed';
+
+            $borrowedBook = BorrowedBook::create($data);
+
+            $book = Book::find($data['book_id']);
+            if ($book) {
+                $book->status = 'borrowed';
+                $book->save();
+            }
+
+            DB::commit();
+
+            return response()->json($this->formatBorrowedBook($borrowedBook), 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Failed to borrow book',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
-    // Show a specific borrowed book record
-    public function show($id)
+    public function show(int $id)
     {
-        $borrowed = BorrowedBook::find($id);
-        if (!$borrowed) {
+        $borrowedBook = BorrowedBook::with('book.library')->find($id);
+
+        if (!$borrowedBook) {
             return response()->json(['message' => 'Borrowed record not found'], 404);
         }
-        return response()->json($borrowed);
+
+        return response()->json($this->formatBorrowedBook($borrowedBook));
     }
 
-    // Update a borrowed book record
-    public function update(Request $request, $id)
+    public function update(Request $request, int $id)
     {
-        $borrowed = BorrowedBook::find($id);
-        if (!$borrowed) {
+        $borrowedBook = BorrowedBook::find($id);
+
+        if (!$borrowedBook) {
             return response()->json(['message' => 'Borrowed record not found'], 404);
         }
-        $validated = $request->validate([
-            'book_id' => 'sometimes|required|exists:books,id',
-            'user_id' => 'sometimes|required|exists:users,id',
+
+        $validator = Validator::make($request->all(), [
+            'book_id' => 'sometimes|required|integer|exists:books,id',
+            'user_id' => 'sometimes|required|integer|exists:users,id',
             'borrowed_at' => 'sometimes|required|date',
             'due_at' => 'sometimes|required|date|after:borrowed_at',
             'returned_at' => 'nullable|date|after:borrowed_at',
+            'status' => 'sometimes|required|string|in:borrowed,returned', // added status validation
         ]);
-        $borrowed->update($validated);
-        return response()->json($borrowed);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $borrowedBook->update($validator->validated());
+
+        return response()->json($this->formatBorrowedBook($borrowedBook));
     }
 
-    // Delete a borrowed book record
-    public function destroy($id)
+    public function handleReturn(Request $request, int $id)
     {
-        $borrowed = BorrowedBook::find($id);
-        if (!$borrowed) {
+        $borrowedBook = BorrowedBook::find($id);
+
+        if (!$borrowedBook) {
             return response()->json(['message' => 'Borrowed record not found'], 404);
         }
-        $borrowed->delete();
+
+        $validator = Validator::make($request->all(), [
+            'returned_at' => 'required|date|after_or_equal:borrowed_at',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        DB::beginTransaction();
+
+        try {
+            $borrowedBook->returned_at = $request->returned_at;
+            $borrowedBook->status = 'returned';
+            $borrowedBook->save();
+
+            $book = Book::find($borrowedBook->book_id);
+            if ($book) {
+                $book->status = 'available';
+                $book->save();
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Book marked as returned',
+                'data' => $this->formatBorrowedBook($borrowedBook),
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'Failed to mark book as returned',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function destroy(int $id)
+    {
+        $borrowedBook = BorrowedBook::find($id);
+
+        if (!$borrowedBook) {
+            return response()->json(['message' => 'Borrowed record not found'], 404);
+        }
+
+        $borrowedBook->delete();
+
         return response()->json(['message' => 'Borrowed record deleted successfully']);
     }
 
-    // Get all borrowed books for a specific user
-    public function userBorrowedBooks($userId)
+    public function userBorrowedBooks(int $userId)
     {
-        $borrowed = BorrowedBook::where('user_id', $userId)->get();
-        return response()->json($borrowed);
+        $borrowedBooks = BorrowedBook::with('book.library')
+            ->where('user_id', $userId)
+            ->get();
+
+        $result = $borrowedBooks->map(fn($borrow) => $this->formatBorrowedBook($borrow));
+
+        return response()->json($result);
     }
 
-    // Get all users who borrowed a specific book
-    public function bookBorrowedUsers($bookId)
+    public function bookBorrowedUsers(int $bookId)
     {
-        $borrowed = BorrowedBook::where('book_id', $bookId)->with('user')->get();
-        $users = $borrowed->map(function($record) {
-            return $record->user;
-        })->unique('id')->values();
+        $borrowedBooks = BorrowedBook::with('user')
+            ->where('book_id', $bookId)
+            ->get();
+
+        // Unique users who borrowed the book
+        $users = $borrowedBooks->pluck('user')->unique('id')->values();
+
         return response()->json($users);
+    }
+
+    public function getBorrowedBooksByStaff(int $staffId)
+    {
+        $borrowedBooks = BorrowedBook::whereHas('book', fn($query) => $query->where('staff_id', $staffId))
+            ->with('book.library')
+            ->get();
+
+        $result = $borrowedBooks->map(fn($borrow) => $this->formatBorrowedBook($borrow));
+
+        return response()->json($result);
+    }
+
+    private function formatBorrowedBook(BorrowedBook $borrow): array
+    {
+        $book = $borrow->book;
+
+        return [
+            'borrow_id' => $borrow->id,
+            'user_id' => $borrow->user_id,
+            'borrowed_at' => $borrow->borrowed_at,
+            'due_at' => $borrow->due_at,
+            'returned_at' => $borrow->returned_at,
+            'borrow_status' => $borrow->status,         // status of the borrow record
+            'book_id' => $book?->id,
+            'title' => $book?->title,
+            'author' => $book?->author,
+            'isbn' => $book?->isbn,
+            'year_published' => $book?->year_published,
+            'category' => $book?->category,
+            'library_name' => $book?->library?->library_name ?? 'Library not found',
+            'status' => $book?->status ?? 'unknown', // status of the book itself
+        ];
     }
 }

@@ -1,6 +1,40 @@
-import React from 'react'
+import React, {useEffect, useState} from 'react'
+import { createData } from '../../../services/ApiServices';
+import { useNavigate } from 'react-router-dom';
+
+
 
 const LandingPage = () => {
+
+  console.log(localStorage.getItem('token'), "Token from localStorage");
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const navigate = useNavigate();
+
+  const handleLogin = async () => {
+  try {
+    const payload = {
+      email,       // comes from input field
+      password     // comes from input field
+    };
+
+    const data = await createData('login', payload);
+    console.log('Login success:', data);
+
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    // Navigate to dashboard after login
+    navigate('/dashboard');
+  } catch (err) {
+    console.error('Login error:', err.response?.data);
+    setError(err.response?.data?.message || 'Login failed');
+  }
+};
+
   return (
      <>
       <div className="flex min-h-full flex-1 flex-col justify-center px-6 py-12 lg:px-8">
@@ -16,7 +50,10 @@ const LandingPage = () => {
         </div>
 
         <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-sm">
-          <form action="#" method="POST" className="space-y-6">
+          <form onSubmit={(e) => {
+            e.preventDefault();  
+            handleLogin();       
+          }} className="space-y-6">
             <div>
               <label htmlFor="email" className="block text-sm/6 font-medium text-gray-900">
                 Email address
@@ -28,6 +65,7 @@ const LandingPage = () => {
                   type="email"
                   required
                   autoComplete="email"
+                  onChange={(e) => setEmail(e.target.value)}
                   className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6"
                 />
               </div>
@@ -51,6 +89,7 @@ const LandingPage = () => {
                   type="password"
                   required
                   autoComplete="current-password"
+                  onChange={(e) => setPassword(e.target.value)}
                   className="block w-full rounded-md bg-white px-3 py-1.5 text-base text-gray-900 outline-1 -outline-offset-1 outline-gray-300 placeholder:text-gray-400 focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6"
                 />
               </div>

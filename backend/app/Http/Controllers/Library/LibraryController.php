@@ -118,4 +118,5 @@ class LibraryController extends Controller
             'assigned_staff' => $library->staff ? $library->staff->name : null,
         ]);
     }
+
 }

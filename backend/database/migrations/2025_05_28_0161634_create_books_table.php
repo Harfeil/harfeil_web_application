@@ -19,12 +19,14 @@ return new class extends Migration
             $table->integer('year_published')->nullable();
             $table->string('genre')->nullable(); // Add genre column
             $table->string('category')->nullable(); // Add category column
+            $table->string('status')->nullable(); // Add category column
             $table->unsignedBigInteger('library_id');
             $table->foreign('library_id')->references('id')->on('libraries')->onDelete('cascade');
             $table->timestamps();
         });
     }
 
+    
     /**
      * Reverse the migrations.
      */

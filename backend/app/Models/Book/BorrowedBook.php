@@ -16,7 +16,8 @@ class BorrowedBook extends Model
         'user_id',
         'borrowed_at',
         'due_at',
-        'returned_at'
+        'returned_at',
+        'status'
     ];
 
     public function book()

@@ -1,4 +1,4 @@
-import React, { use, useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card,
   Typography,
@@ -22,10 +22,44 @@ import {
 import { ChevronRightIcon, ChevronDownIcon } from "@heroicons/react/24/outline";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useNavigate } from "react-router-dom";
+import { adminSidebarTabs, staffSidebarTabs, BorrowerSidebarTabs } from "./SideBarItems";
+import { handleLogout } from "../../services/ApiServices";
 
 // Accept a 'tabs' prop for dynamic sidebar items
 function Sidebar({ action, tabs = [] }) {
   const navigate = useNavigate();
+  // Remove sidebarContent state and logic that sets state during render
+  const [role, setRole] = useState('')
+      
+      useEffect(() => {
+        const user = JSON.parse(localStorage.getItem('user'));
+        const userRole = user?.role;
+        setRole(userRole);
+      }, []);
+
+  // Determine which tabs to use based on role
+  let sideBarTitle ="";
+  let sidebarTabs = [];
+  switch (role) {
+    case 'admin':
+      sidebarTabs = adminSidebarTabs;
+      sideBarTitle = "Admin Dashboard";
+      break;
+    case 'staff':
+      sidebarTabs = staffSidebarTabs;
+      sideBarTitle = "Staff Dashboard";
+      break;
+    case 'student':
+      sidebarTabs = BorrowerSidebarTabs;
+      sideBarTitle = "Student Dashboard";
+      break;
+    default:
+      sidebarTabs = [];
+      break;
+  }
+
+  console.log("Sidebar Tabs:", sideBarTitle);
+  console.log(localStorage.getItem("role"));
   const [open, setOpen] = useState(null);
   const [showSidebar, setShowSidebar] = useState(false);
 
@@ -58,11 +92,11 @@ function Sidebar({ action, tabs = [] }) {
         </button>
         <div className="mb-6 p-2">
           <Typography variant="h5" color="blue-gray">
-            Admin Dashboard
+           {sideBarTitle}
           </Typography>
         </div>
         <List className="space-y-1">
-          {tabs.map((tab) => (
+          {sidebarTabs.map((tab) => (
             <ListItem
               key={tab.key || tab.action}
               className={`text-xl ${action === tab.action ? 'font-bold bg-indigo-100' : ''}`}
@@ -84,24 +118,35 @@ function Sidebar({ action, tabs = [] }) {
     <>
       {Hamburger}
       {MobileSidebar}
-      <Card className="hidden sm:block h-[1200px] w-100 max-w-[20rem] p-6 shadow-xl shadow-blue-gray-900/5">
+      <Card className="hidden sm:block h-[985px] w-100 max-w-[20rem] p-6 shadow-xl shadow-blue-gray-900/5">
         <div className="mb-6 p-2">
           <Typography variant="h5" color="blue-gray">
-            Admin Dashboard
+            {sideBarTitle}
           </Typography>
         </div>
         <List className="space-y-1">
-          {tabs.map((tab) => (
+          {sidebarTabs.map((tab) => (
             <ListItem
               key={tab.key || tab.action}
-              className={`text-xl ${action === tab.action ? 'font-bold bg-indigo-100' : ''}`}
-              onClick={() => navigate(tab.route)}
-              style={{ backgroundColor: action === tab.action ? '#D3D3D3' : 'transparent' }}
+              className={`
+                flex items-center gap-3 px-4 py-2 rounded-lg cursor-pointer
+                transition-colors duration-200
+                ${action === tab.action
+                  ? "bg-indigo-100 text-indigo-700 font-bold shadow"
+                  : "hover:bg-gray-100 text-gray-700"
+                }
+              `}
+              onClick={() => {
+                if (tab.action === "logout") {
+                  handleLogout(navigate);
+                } else {
+                  navigate(tab.route);
+                }
+              }}
+              style={{ backgroundColor: action === tab.action ? "#E0E7FF" : "transparent" }}
             >
-              <ListItemPrefix>
-                {tab.icon}
-              </ListItemPrefix>
-              {tab.label}
+              <ListItemPrefix>{tab.icon}</ListItemPrefix>
+              <span className="truncate">{tab.label}</span>
             </ListItem>
           ))}
         </List>

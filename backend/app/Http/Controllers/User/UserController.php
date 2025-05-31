@@ -37,6 +37,7 @@ class UserController extends Controller
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
                 'email' => 'required|email|unique:users,email',
+                'role' => 'required|string',
                 'password' => 'required|string|min:6',
             ], [
                 'email.unique' => 'The email address is already taken.',
@@ -52,6 +53,7 @@ class UserController extends Controller
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
+            'role' => $request->role,
             'password' => bcrypt($request->password),
         ]);
 
@@ -95,11 +97,13 @@ class UserController extends Controller
                 'name' => 'sometimes|required|string|max:255',
                 'email' => "sometimes|required|email|unique:users,email,$id",
                 'password' => 'nullable|string|min:6',
+                'role' => 'nullable|string',
             ], [
                 'email.unique' => 'The email address is already taken.',
                 'email.required' => 'The email field is required.',
                 'name.required' => 'The name field is required.',
                 'password.required' => 'The password field is required.',
+                'role.required' => 'The role field is required.',
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['errors' => $e->errors()], 422);
@@ -114,6 +118,10 @@ class UserController extends Controller
         }
         if ($request->filled('password')) {
             $user->password = bcrypt($request->password);
+        }
+
+        if ($request->filled('role')) {
+            $user->role = $request->role;
         }
 
         $user->save();
@@ -134,5 +142,29 @@ class UserController extends Controller
         $user->delete();
 
         return response()->json(['message' => 'User deleted successfully']);
+    }
+
+    public function getStaffUsers()
+    {
+        // Fetch all users with the 'staff' role
+        $staffs = User::where('role', 'staff')->select('id', 'name', 'email')->get();
+        
+        if ($staffs->isEmpty()) {
+            return response()->json(['message' => 'No staff found'], 404);
+        }
+
+        return response()->json($staffs);
+    }
+    public function getBorrowerUsers()
+    {
+        $studentsAndTeachers = User::whereIn('role', ['student', 'teacher'])
+            ->select('id', 'name', 'email', 'role')
+            ->get();
+
+        if ($studentsAndTeachers->isEmpty()) {
+            return response()->json(['message' => 'No borrowers found'], 404);
+        }
+
+        return response()->json($studentsAndTeachers);
     }
 }

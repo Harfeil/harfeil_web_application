@@ -21,8 +21,10 @@ class Book extends Model
         'isbn',
         'year_published',
         'category',
-        'library_id'
+        'library_id',
+        'status',
     ];
+
 
     public function borrowedBooks()
     {
