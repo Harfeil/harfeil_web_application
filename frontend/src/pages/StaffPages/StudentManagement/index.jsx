@@ -30,7 +30,7 @@ const StudentManagementPage = () => {
       return;
     }
     formData.user_id = userId;
-    formData.password = "student123";
+    formData.password = "borrower123";
     try {
       const newBorrower = await createData('/users', formData);
       setborrower(prev => [...prev, newBorrower]);
