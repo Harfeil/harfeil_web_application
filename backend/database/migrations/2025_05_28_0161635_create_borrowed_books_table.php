@@ -18,6 +18,7 @@ return new class extends Migration
             $table->unsignedBigInteger('user_id');
             $table->timestamp('borrowed_at')->nullable();
             $table->timestamp('due_at')->nullable();
+            $table->string('status')->nullable();
             $table->timestamp('returned_at')->nullable();
             $table->timestamps();
 

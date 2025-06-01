@@ -156,12 +156,6 @@ const ProfilePage = () => {
             )}
           </div>
 
-          {imageName && (
-            <p className="text-center text-sm text-gray-600 mb-4">
-              Selected file: <span className="font-medium">{imageName}</span>
-            </p>
-          )}
-
           <div className="text-center mb-4">
             <button
               onClick={handleUpload}

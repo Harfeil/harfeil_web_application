@@ -9,164 +9,127 @@ use App\Models\Book\Book;
 class BookController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Display a listing of all books with their library info.
      */
-   public function index()
+    public function index()
     {
-        // Eager load library relationship for all books
+        // Eager load library relation for all books
         $books = Book::with('library')->get();
 
-        // Map the books to include library name explicitly
-        $booksWithLibraryName = $books->map(function ($book) {
+        $booksWithLibrary = $books->map(function ($book) {
             return [
-                'id' => $book->id,
-                'title' => $book->title,
-                'author' => $book->author,
-                'isbn' => $book->isbn,
+                'id'             => $book->id,
+                'title'          => $book->title,
+                'author'         => $book->author,
+                'isbn'           => $book->isbn,
                 'year_published' => $book->year_published,
-                'category' => $book->category,
-                'library_name' => $book->library?->library_name,
-                'status' => $book->status? $book->status : 'available', // Default to 'available' if status is null
+                'category'       => $book->category,
+                'library_name'   => $book->library?->library_name,
+                'status'         => $book->status ?? 'available',
             ];
         });
 
-        return response()->json($booksWithLibraryName);
+        return response()->json($booksWithLibrary);
     }
-
-    /**
-     * Show the form for creating a new resource.
-     * (Not needed for API, usually for web apps, so can be empty)
-     */
-    public function create()
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         // Validate input
         try {
             $validated = $request->validate([
-                'title' => 'required|string|max:255',
-                'author' => 'required|string|max:255',
+                'title'          => 'required|string|max:255',
+                'author'         => 'required|string|max:255',
                 'year_published' => 'required|integer',
-                'isbn' => 'nullable|string',
-                'genre' => 'nullable|string',
-                'category' => 'nullable|string',
-                'library_id' => 'required|exists:libraries,id',
-                'status' => 'required|string',
+                'isbn'           => 'nullable|string',
+                'genre'          => 'nullable|string',
+                'category'       => 'nullable|string',
+                'library_id'     => 'required|exists:libraries,id',
+                'status'         => 'nullable|string',
             ], [
-                'title.required' => 'The title field is required.',
-                'author.required' => 'The author field is required.',
+                'title.required'          => 'The title field is required.',
+                'author.required'         => 'The author field is required.',
                 'year_published.required' => 'The published year is required.',
-                'library_id.required' => 'The library_id field is required.',
-                'library_id.exists' => 'The selected library does not exist.',
-                'status.required' => 'The status field is required.',
+                'library_id.required'     => 'The library_id field is required.',
+                'library_id.exists'       => 'The selected library does not exist.',
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['errors' => $e->errors()], 422);
         }
 
-        // Create book using only validated data
+        // Create book
         $book = Book::create($validated);
 
-        // Load library and staff info
+        // Load related library and staff data
         $book->load(['library.staff:id,name']);
-        $response = [
-            'id' => $book->id,
-            'title' => $book->title,
-            'author' => $book->author,
-            'year_published' => $book->year_published,
-            'isbn' => $book->isbn,
-            'genre' => $book->genre,
-            'category' => $book->category,
-            'library' => $book->library ? $book->library->name : null,
-            'staff_id' => $book->library && $book->library->staff ? $book->library->staff->id : null,
-            'staff_name' => $book->library && $book->library->staff ? $book->library->staff->name : null,
-        ];
 
-        return response()->json($response, 201); // 201 Created
+        return response()->json([
+            'id'             => $book->id,
+            'title'          => $book->title,
+            'author'         => $book->author,
+            'year_published' => $book->year_published,
+            'isbn'           => $book->isbn,
+            'genre'          => $book->genre,
+            'category'       => $book->category,
+            'status'         => $book->status ?? 'available',
+            'library_name'   => $book->library?->library_name,
+            'staff_id'       => $book->library?->staff?->id,
+            'staff_name'     => $book->library?->staff?->name,
+        ], 201);
     }
 
     /**
-     * Display the specified resource.
+     * Display a specific book.
      */
     public function show(string $id)
     {
-        $book = Book::find($id);
+        $book = Book::with('library')->find($id);
+
         if (!$book) {
             return response()->json(['message' => 'Book not found'], 404);
         }
+
         return response()->json([
-        'id' => $book->id,
-        'title' => $book->title,
-        'author' => $book->author,
-        'isbn' => $book->isbn,
-        'year_published' => $book->year_published,
-        'category' => $book->category,
-        'library_name' => $book->library?->library_name, // assuming the Library model has a 'name' column
-        'status' => $book->status? $book->status : 'available', // Default to 'available' if status is null
-    ]);
+            'id'             => $book->id,
+            'title'          => $book->title,
+            'author'         => $book->author,
+            'isbn'           => $book->isbn,
+            'year_published' => $book->year_published,
+            'category'       => $book->category,
+            'library_name'   => $book->library?->library_name,
+            'status'         => $book->status ?? 'available',
+        ]);
     }
-
-    /**
-     * Show the form for editing the specified resource.
-     * (Not needed for API)
-     */
-    public function edit(string $id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, string $id)
     {
         $book = Book::find($id);
+
         if (!$book) {
             return response()->json(['message' => 'Book not found'], 404);
         }
 
-        // Validate input
+        // Validate input for partial updates
         try {
             $request->validate([
-                'title' => 'sometimes|required|string|max:255',
-                'author' => 'sometimes|required|string|max:255',
+                'title'          => 'sometimes|required|string|max:255',
+                'author'         => 'sometimes|required|string|max:255',
                 'year_published' => 'sometimes|required|integer',
+                'isbn'           => 'sometimes|nullable|string',
+                'genre'          => 'sometimes|nullable|string',
+                'category'       => 'sometimes|nullable|string',
+                'status'         => 'sometimes|nullable|string',
             ], [
-                'title.required' => 'The title field is required.',
-                'author.required' => 'The author field is required.',
+                'title.required'          => 'The title field is required.',
+                'author.required'         => 'The author field is required.',
                 'year_published.required' => 'The published year is required.',
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['errors' => $e->errors()], 422);
         }
 
-        // Update book data
-        if ($request->has('title')) {
-            $book->title = $request->title;
-        }
-        if ($request->has('author')) {
-            $book->author = $request->author;
-        }
-        if ($request->has('year_published')) {
-            $book->year_published = $request->year_published;
-        }
-        if ($request->has('isbn')) {
-            $book->isbn = $request->isbn;
-        }
-        if ($request->has('genre')) {
-            $book->genre = $request->genre;
-        }
-        if ($request->has('category')) {
-            $book->category = $request->category;
-        }
-        if ($request->has('status')) {
-            $book->status = $request->status;
+        // Update fields if present
+        foreach (['title', 'author', 'year_published', 'isbn', 'genre', 'category', 'status'] as $field) {
+            if ($request->has($field)) {
+                $book->$field = $request->input($field);
+            }
         }
 
         $book->save();
@@ -175,11 +138,12 @@ class BookController extends Controller
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Delete a book.
      */
     public function destroy(string $id)
     {
         $book = Book::find($id);
+
         if (!$book) {
             return response()->json(['message' => 'Book not found'], 404);
         }
@@ -189,31 +153,32 @@ class BookController extends Controller
         return response()->json(['message' => 'Book deleted successfully']);
     }
 
+    /**
+     * Get books associated with a specific staff member.
+     */
     public function getBooksByStaff($staffId)
     {
-        // Get all books associated with the staff member
         $books = Book::whereHas('library.staff', function ($query) use ($staffId) {
             $query->where('id', $staffId);
-        })->get();
+        })->with('library')->get();
 
         if ($books->isEmpty()) {
             return response()->json(['message' => 'No books found for this staff member'], 404);
         }
 
-        // Map the books to include library name explicitly
-        $booksWithLibraryName = $books->map(function ($book) {
+        $booksWithLibrary = $books->map(function ($book) {
             return [
-                'id' => $book->id,
-                'title' => $book->title,
-                'author' => $book->author,
-                'isbn' => $book->isbn,
+                'id'             => $book->id,
+                'title'          => $book->title,
+                'author'         => $book->author,
+                'isbn'           => $book->isbn,
                 'year_published' => $book->year_published,
-                'category' => $book->category,
-                'library_name' => $book->library?->library_name,
-                'status' => $book->status,
+                'category'       => $book->category,
+                'library_name'   => $book->library?->library_name,
+                'status'         => $book->status ?? 'available',
             ];
         });
 
-        return response()->json($booksWithLibraryName);
+        return response()->json($booksWithLibrary);
     }
 }

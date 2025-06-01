@@ -1,111 +1,85 @@
-import React, { useEffect, useState } from 'react'
-import Sidebar from '../../../components/Sidebar'
-import { staffSidebarTabs } from '../../../components/Sidebar/SideBarItems'
-import BookCard from '../../../components/ModalForm/BookCard'
-import { getData, createData, updateData, deleteData } from '../../../services/ApiServices'
-import { AddBookFields } from '../../../components/ModalForm/ModalFormFields'
-import Card from '../../../components/ModalForm/Card'
+import React, { useEffect, useState } from 'react';
+import Sidebar from '../../../components/Sidebar';
+import { staffSidebarTabs } from '../../../components/Sidebar/SideBarItems';
+import BookCard from '../../../components/ModalForm/BookCard';
+import { getData, createData, updateData, deleteData } from '../../../services/ApiServices';
+import { AddBookFields } from '../../../components/ModalForm/ModalFormFields';
+import Card from '../../../components/ModalForm/Card';
+
 const BorrowBookPage = () => {
-  const [bookData, setBookData] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [editRow, setEditRow] = useState(null)
-  const [editOpen, setEditOpen] = useState(false)
-  const [libraryOption, setLibraryOption] = useState([])
+  const [borrowedBooks, setBorrowedBooks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [editRow, setEditRow] = useState(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [libraryOption, setLibraryOption] = useState([]);
+
   const user = JSON.parse(localStorage.getItem('user'));
-  const [user_id, set_user_id] = useState(user?.id)
-  const [role, setRole] = useState(user?.role)
-    
+  const [user_id, setUserId] = useState(user?.id);
+  const [role, setRole] = useState(user?.role);
+
   useEffect(() => {
     try {
-      const user = JSON.parse(localStorage.getItem('user'));
-      const userId = user?.id;
-      if (userId) set_user_id(userId);
-      setRole(user?.role);
+      const storedUser = JSON.parse(localStorage.getItem('user'));
+      if (storedUser) {
+        setUserId(storedUser.id);
+        setRole(storedUser.role);
+      }
     } catch (e) {
       console.error("Failed to parse user:", e);
     }
   }, []);
 
-
+  // Fetch borrowed books and extract unique libraries
   useEffect(() => {
     if (!user_id) return;
 
-    getData(`/library/staff/${user_id}`)
-      .then(data => {
-        console.log("API response:", data);
-        const options = [{
-          value: data.id,
-          label: data.library_name
-        }];
-        setLibraryOption(options);
-      })
-      .catch(err => console.error('Failed to fetch staff libraries:', err));
-  }, [user_id]);
-  
-  useEffect(() => {
-    console.log("Library options:", libraryOption);
-  }, [libraryOption]);
-  // Fetch book data
-  useEffect(() => {
     setLoading(true);
-    getData(`/books/staff-books/${user_id}`)
-      .then(data => setBookData(data))
-      .catch(err => console.error('Failed to fetch book data:', err))
+    getData(`borrowed-books/staff/${user_id}`)
+      .then(data => {
+        setBorrowedBooks(data);
+
+        // Extract unique libraries from borrowed books
+        const uniqueLibraries = [];
+        data.forEach(borrowedBook => {
+          const library = borrowedBook.book?.library;
+          if (library && !uniqueLibraries.some(lib => lib.value === library.id)) {
+            uniqueLibraries.push({ value: library.id, label: library.name || library.library_name });
+          }
+        });
+        setLibraryOption(uniqueLibraries);
+      })
+      .catch(err => console.error('Failed to fetch borrowed books:', err))
       .finally(() => setLoading(false));
-  }, []);
+  }, [user_id]);
 
-  // Add Book
-  const handleAddBook = async (formData) => {
-    console.log("Form data to submit:", formData); // 👈 Add this
-    try {
-      const newBook = await createData('/books', formData);
-      setBookData(prev => [...prev, newBook]);
-    } catch (err) {
-      console.error('Failed to add book:', err);
-    }
-  };
-  // Edit Book
+  // You may want to edit/delete borrowed books if your API supports that.
+  // If not, you can disable or remove those handlers.
+
+  // For demo, let's disable edit/delete for borrowedBooks to avoid confusion:
   const handleEdit = (row) => {
-    setEditRow({ ...row });
-    setEditOpen(true);
+    // You might want to show details or do something else here
+    alert("Editing borrowed books is disabled.");
   };
 
-  const handleEditSubmit = async (formData) => {
-    try {
-      const updated = await updateData('/books', editRow.id, formData);
-      setBookData(prev =>
-        prev.map(item => (item.id === editRow.id ? updated : item))
-      );
-    } catch (err) {
-      console.error('Failed to edit book:', err);
-    } finally {
-      setEditOpen(false);
-      setEditRow(null);
-    }
+  const handleDelete = (row) => {
+    alert("Deleting borrowed books is disabled.");
   };
 
-  const handleDelete = async (row) => {
-    if (window.confirm('Are you sure you want to delete this book?')) {
-      try {
-        await deleteData('/books', row.id);
-        setBookData(prev => prev.filter(item => item.id !== row.id));
-      } catch (err) {
-        console.error('Failed to delete book:', err);
-      }
-    }
-  };
+  // For modal, if editing borrowed book is not applicable, you can omit or disable modal.
 
-  // Prepare modal fields for Add Book, injecting library options into the correct field
+  // Prepare modal fields for Add Book, injecting library options
+  // You may not need adding books here, so can remove handleAddBook if unused.
+
   const modalFields = AddBookFields.map(field =>
     field.key === "library_id"
       ? { ...field, options: libraryOption }
       : field
-  )
+  );
 
   return (
     <div className='dashboard-container'>
       <div>
-        <Sidebar action={"borrowManagement"} tabs={staffSidebarTabs}/>
+        <Sidebar action={"borrowManagement"} tabs={staffSidebarTabs} />
       </div>
       <div className="pl-20 pt-5 w-full">
         <h1 className='text-4xl font-bold mb-4'>Borrow Book Management</h1>
@@ -115,26 +89,17 @@ const BorrowBookPage = () => {
         ) : (
           <div className='overflow-y-auto h-[calc(100vh-200px)]'>
             <BookCard
-              data={bookData}
+              data={borrowedBooks}
               onEdit={handleEdit}
               onDelete={handleDelete}
               role={role}
             />
           </div>
         )}
-        {editOpen && (
-          <Card
-            buttonName="Edit Book"
-            fields={modalFields}
-            onSubmit={handleEditSubmit}
-            initialValues={editRow}
-            open={editOpen}
-            setOpen={setEditOpen}
-          />
-        )}
+        {/* Remove editing modal since editing borrowed book info likely not allowed */}
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default BorrowBookPage
+export default BorrowBookPage;

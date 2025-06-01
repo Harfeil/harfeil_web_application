@@ -25,7 +25,6 @@ class BookBorrowedController extends Controller
         $validator = Validator::make($request->all(), [
             'book_id' => 'required|integer|exists:books,id',
             'user_id' => 'required|integer|exists:users,id',
-            'status' => 'Borrowed',
             'borrowed_at' => 'required|date',
             'due_at' => 'required|date|after:borrowed_at',
             'returned_at' => 'nullable|date|after:borrowed_at',
@@ -56,7 +55,7 @@ class BookBorrowedController extends Controller
             DB::rollBack();
             return response()->json([
                 'message' => 'Failed to borrow book',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -86,7 +85,7 @@ class BookBorrowedController extends Controller
             'borrowed_at' => 'sometimes|required|date',
             'due_at' => 'sometimes|required|date|after:borrowed_at',
             'returned_at' => 'nullable|date|after:borrowed_at',
-            'status' => 'sometimes|required|string|in:borrowed,returned', // added status validation
+            'status' => 'sometimes|required|string|in:borrowed,returned',
         ]);
 
         if ($validator->fails()) {
@@ -137,7 +136,7 @@ class BookBorrowedController extends Controller
             DB::rollBack();
             return response()->json([
                 'message' => 'Failed to mark book as returned',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -180,9 +179,11 @@ class BookBorrowedController extends Controller
 
     public function getBorrowedBooksByStaff(int $staffId)
     {
-        $borrowedBooks = BorrowedBook::whereHas('book', fn($query) => $query->where('staff_id', $staffId))
-            ->with('book.library')
-            ->get();
+        $borrowedBooks = BorrowedBook::whereHas('book.library', function ($query) use ($staffId) {
+            $query->where('assigned_staff', $staffId);
+        })
+        ->with(['book.library'])
+        ->get();
 
         $result = $borrowedBooks->map(fn($borrow) => $this->formatBorrowedBook($borrow));
 
@@ -199,7 +200,7 @@ class BookBorrowedController extends Controller
             'borrowed_at' => $borrow->borrowed_at,
             'due_at' => $borrow->due_at,
             'returned_at' => $borrow->returned_at,
-            'borrow_status' => $borrow->status,         // status of the borrow record
+            'borrow_status' => $borrow->status,
             'book_id' => $book?->id,
             'title' => $book?->title,
             'author' => $book?->author,
@@ -207,7 +208,7 @@ class BookBorrowedController extends Controller
             'year_published' => $book?->year_published,
             'category' => $book?->category,
             'library_name' => $book?->library?->library_name ?? 'Library not found',
-            'status' => $book?->status ?? 'unknown', // status of the book itself
+            'status' => $book?->status ?? 'unknown',
         ];
     }
 }

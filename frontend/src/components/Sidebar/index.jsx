@@ -53,6 +53,10 @@ function Sidebar({ action, tabs = [] }) {
       sidebarTabs = BorrowerSidebarTabs;
       sideBarTitle = "Student Dashboard";
       break;
+    case 'teacher':
+      sidebarTabs = BorrowerSidebarTabs;
+      sideBarTitle = "Teacher Dashboard";
+      break;
     default:
       sidebarTabs = [];
       break;

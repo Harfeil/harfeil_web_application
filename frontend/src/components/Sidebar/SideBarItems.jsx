@@ -17,7 +17,7 @@ export const staffSidebarTabs = [
   { label: "Dashboard", route: "/dashboard", action: "dashboard", icon: <UserCircleIcon className="h-5 w-5" /> },
   { label: "Book", route: "/bookManagement", action: "bookManagement", icon: <UserCircleIcon className="h-5 w-5" /> },
   { label: "Borrow Books", route: "/borrowerBookPage", action: "borrowManagement", icon: <UserCircleIcon className="h-5 w-5" /> },
-  { label: "Student Management", route: "/studentManagement", action: "studentManagement", icon: <UserCircleIcon className="h-5 w-5" /> },
+  { label: "Borrower Management", route: "/studentManagement", action: "studentManagement", icon: <UserCircleIcon className="h-5 w-5" /> },
   {
     label: "Log Out",
     action: "logout",

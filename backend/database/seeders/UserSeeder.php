@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\User\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class UserSeeder extends Seeder
 {
@@ -12,10 +13,19 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
-        // Create 5 users using the factory
+        // Create an admin user
+        $admin = User::create([
+            'name' => 'Harfeil Salmeron',
+            'email' => 'harfeil@gmail.com',
+            'role' => 'admin',
+            'password' => Hash::make('123456')
+        ]);
+
+        // Create 5 regular users using the factory
         $users = User::factory()->count(5)->create();
 
-        // Optional: Output to the console to confirm seeding
-        $this->command->info("Seeded {$users->count()} users successfully.");
+        // Output to the console
+        $this->command->info("Seeded 1 admin user: {$admin->email}");
+        $this->command->info("Seeded {$users->count()} regular users successfully.");
     }
 }

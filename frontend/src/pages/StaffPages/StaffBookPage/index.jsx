@@ -57,6 +57,7 @@ const StaffBookPage = () => {
   // Add Book
   const handleAddBook = async (formData) => {
     console.log("Form data to submit:", formData); // 👈 Add this
+    formData.status = "available"; // Set default status to available
     try {
       const newBook = await createData('/books', formData);
       setBookData(prev => [...prev, newBook]);

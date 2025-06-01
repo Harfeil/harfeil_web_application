@@ -97,7 +97,7 @@ const StudentBookPage = () => {
               data={bookData}
               role={role}
               isBorrowed={false}
-              onBorrow={role === 'student' ? handleBorrow : undefined}
+              onBorrow={role === 'student' || role === 'teacher' ? handleBorrow : undefined}
             />
           </div>
         )}
